@@ -328,7 +328,7 @@ class Compiler {
 		$result = array();
 
 		foreach ($params as $key => $value)
-			if (!is_array($value) {
+			if (!is_array($value)) {
 				// add normal value
 				$result[] = $key.'='.urlencode($value);
 
