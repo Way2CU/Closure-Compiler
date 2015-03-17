@@ -161,8 +161,7 @@ class Compiler {
 
 		// prepare headers and content
 		$params = $this->prepare_params();
-		$content = http_build_query($params);
-		$content = preg_replace('/%5B[0-9]+%5D/simU', '', $content); // fix stupid PHP HTTP array interpretation
+		$content = $this->build_query($params);
 		$headers = $this->prepare_headers($content);
 
 		// open connection
@@ -215,8 +214,7 @@ class Compiler {
 
 		// prepare headers and content
 		$params = $this->prepare_params();
-		$content = http_build_query($params);
-		$content = preg_replace('/%5B[0-9]+%5D/simU', '', $content); // fix stupid PHP HTTP array interpretation
+		$content = $this->build_query($params);
 		$headers = $this->prepare_headers($content);
 
 		// open connection
@@ -317,6 +315,22 @@ class Compiler {
 		$result['language'] = $this->language;
 
 		return $result;
+	}
+
+	/**
+	 * Build query string the proper way. PHP's http_build_query doesn't know
+	 * how to properly create list items so we have to do it manually.
+	 *
+	 * @param array $params
+	 * @return string
+	 */
+	private function build_query($params) {
+		$result = array();
+
+		foreach ($params as $key => $value)
+			$result[] = $key.'='.urlencode($value);
+
+		return implode('&', $result);
 	}
 }
 
