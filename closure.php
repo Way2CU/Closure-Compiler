@@ -159,9 +159,11 @@ class Compiler {
 		if ($socket && $error_number == 0) {
 			// send and receive data
 			fwrite($socket, $headers."\r\n\r\n".$content);
-			$raw_data = stream_get_contents($socket, 1024);
+			$raw_data = stream_get_contents($socket);
+			$data_pos = strpos('{"compiledCode":', $raw_data);
 
 			// parse response
+			$json_data = substr($raw_data, $data_pos);
 			$response = json_decode($raw_data);
 
 			// close connection
@@ -210,9 +212,11 @@ class Compiler {
 		if ($socket && $error_number == 0) {
 			// send and receive data
 			fwrite($socket, $headers."\r\n\r\n".$content);
-			$raw_data = stream_get_contents($socket, 1024);
+			$raw_data = stream_get_contents($socket);
+			$data_pos = strpos('{"compiledCode":', $raw_data);
 
 			// parse response
+			$json_data = substr($raw_data, $data_pos);
 			$response = json_decode($raw_data);
 
 			// close connection
