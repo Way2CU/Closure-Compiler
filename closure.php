@@ -175,7 +175,7 @@ class Compiler {
 			// send and receive data
 			fwrite($socket, $headers."\r\n\r\n".$content);
 			$raw_data = stream_get_contents($socket);
-			$data_pos = strpos('{"compiledCode":', $raw_data);
+			$data_pos = strpos($raw_data, '{"compiledCode":');
 
 			// parse response
 			$json_data = substr($raw_data, $data_pos);
@@ -229,7 +229,7 @@ class Compiler {
 			// send and receive data
 			fwrite($socket, $headers."\r\n\r\n".$content);
 			$raw_data = stream_get_contents($socket);
-			$data_pos = strpos('{"compiledCode":', $raw_data);
+			$data_pos = strpos($raw_data, '{"compiledCode":');
 
 			// parse response
 			$json_data = substr($raw_data, $data_pos);
