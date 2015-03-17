@@ -64,6 +64,7 @@ class Compiler {
 	 * @param string $url
 	 */
 	public function add_url($url) {
+		$this->links[] = $url;
 	}
 
 	/**
