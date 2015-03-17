@@ -7,6 +7,8 @@
  * server and compile it with specified options. Library only handles
  * communication and will not handle caching for you.
  *
+ * Library requires PHP version 5.3+
+ *
  * For additional information refer to:
  *	https://developers.google.com/closure/compiler/
  *
@@ -15,6 +17,7 @@
  */
 
 namespace Library/Closure;
+
 
 class Level {
 	const WHITESPACE = 'WHITESPACE_ONLY';
@@ -32,13 +35,36 @@ class Compiler {
 	private $externals_url = null;
 	private $language = 'ECMASCRIPT5';
 	private $errors = array();
+	private $warnings = array();
+	private $files = array();
+	private $links = array();
 
 	private $optimization_levels = array('WHITESPACE_ONLY', 'SIMPLE_OPTIMIZATIONS', 'ADVANCED_OPTIMIZATIONS');
 	private $warning_levels = array('QUIET', 'DEFAULT', 'VERBOSE');
 	private $supported_languages = array('ECMASCRIPT3', 'ECMASCRIPT5', 'ECMASCRIPT5_STRICT');
 
 	// communication endpoint
-	const URL = 'closure-compiler.appspot.com/compile';
+	private $endpoint = '/compile';
+	private $hostname = 'closure-compiler.appspot.com';
+
+	/**
+	 * Add local file to be compiled. If at least one file is specified
+	 * compilation from source instead from URL list will take precedence.
+	 *
+	 * @param string $file_name
+	 */
+	public function add_file($file_name) {
+		if (!in_array($file_name, $this->files) && file_exists($file_name))
+			$this->files[] = $file_name;
+	}
+
+	/**
+	 * Add file to be compiled from specified URL.
+	 *
+	 * @param string $url
+	 */
+	public function add_url($url) {
+	}
 
 	/**
 	 * Use secure connection to send request to server.
@@ -101,11 +127,61 @@ class Compiler {
 	}
 
 	/**
+	 * Get list of warnings reported by the compiler.
+	 *
+	 * @return array
+	 */
+	public function get_warnings() {
+		return $this->warnings;
+	}
+
+	/**
 	 * Compile added files and code and return result as string.
 	 *
 	 * @return string
 	 */
 	public function compile() {
+		$result = '';
+		$response = null;
+
+		// prepare headers and content
+		$params = $this->prepare_params();
+		$content = http_build_query($params);
+		$headers = $this->prepare_headers($content);
+
+		// open connection
+		$port = $this->secure ? 443 : 80;
+		$prefix = $this->secure ? 'ssl://' : '';
+		$socket = fsockopen($prefix.$this->hostname, $port, $error_number, $error_string, 2);
+
+		// send data for compilation
+		if ($socket && $error_number == 0) {
+			// send and receive data
+			fwrite($socket, $headers."\r\n\r\n".$content);
+			$raw_data = stream_get_contents($socket, 1024);
+
+			// parse response
+			$response = json_decode($raw_data);
+
+			// close connection
+			fclose($socket);
+			$result = false;
+		}
+
+		// bail if we didn't get any response
+		if (is_null($response))
+			return $result;
+
+		if (!empty($response->errors))
+			$this->errors = $response->errors;
+
+		if (!empty($response->warnings))
+			$this->warnings = $response->warnings;
+
+		// store response
+		$result = $response->compiledCode;
+
+		return $result;
 	}
 
 	/**
@@ -116,6 +192,110 @@ class Compiler {
 	 * @return boolean
 	 */
 	public function compile_and_save($file_name) {
+		$result = false;
+		$response = null;
+
+		// prepare headers and content
+		$params = $this->prepare_params();
+		$content = http_build_query($params);
+		$headers = $this->prepare_headers($content);
+
+		// open connection
+		$port = $this->secure ? 443 : 80;
+		$prefix = $this->secure ? 'ssl://' : '';
+		$socket = fsockopen($prefix.$this->hostname, $port, $error_number, $error_string, 2);
+
+		// send data for compilation
+		if ($socket && $error_number == 0) {
+			// send and receive data
+			fwrite($socket, $headers."\r\n\r\n".$content);
+			$raw_data = stream_get_contents($socket, 1024);
+
+			// parse response
+			$response = json_decode($raw_data);
+
+			// close connection
+			fclose($socket);
+			$result = false;
+		}
+
+		// bail if we didn't get any response
+		if (is_null($response))
+			return $result;
+
+		if (!empty($response->errors))
+			$this->errors = $response->errors;
+
+		if (!empty($response->warnings))
+			$this->warnings = $response->warnings;
+
+		// store response
+		if (file_put_contents($file_name, $response->compiledCode))
+			$result = true;
+
+		return $result;
+	}
+
+	/**
+	 * Prepare HTTP headers.
+	 *
+	 * @param string $content
+	 * @return string
+	 */
+	private function prepare_headers($content) {
+		$header = array();
+		$content_length = strlen($content);
+
+		// compile default headers
+		$header[] = "POST {$this->endpoint} HTTP/1.1";
+		$header[] = 'Host: '.$this->hostname;
+		$header[] = 'Content-Type: application/x-www-form-urlencoded';
+		$header[] = 'Content-Length: '.$content_length;
+		$header[] = 'Connect-time: 0';
+		$header[] = 'Connection: close';
+
+		return implode("\r\n", $header);
+	}
+
+	/**
+	 * Prepare paramters for sending.
+	 *
+	 * @return array
+	 */
+	private function prepare_params() {
+		$result = array();
+
+		// include code to be compiled
+		if (count($this->files) > 0) {
+			// join all the files
+			$code = '';
+			foreach ($this->files as $file_name)
+				$code .= file_get_contents($file_name);
+
+			// add combined files as parameter
+			$result['js_code'] = $code;
+
+		} else {
+			// add links
+			$result['code_url'] = $this->links;
+		}
+
+		// required configuration
+		$result['compilation_level'] = $this->level;
+		$result['output_format'] = 'json';
+		$result['output_info'] = 'compiled_code,warnings,errors';
+
+		// configure externals
+		if (!is_null($this->externals))
+			$result['js_externs'] = $this->externals; else
+			$result['externs_url'] = $this->externals_url;
+
+		// optional configuration
+		$result['use_closure_library'] = $this->use_library ? 'true' : 'false';
+		$result['warning_level'] = $this->warning_level;
+		$result['language'] = $this->language;
+
+		return $result;
 	}
 }
 
