@@ -251,7 +251,7 @@ class Compiler {
 			$this->warnings = $response->warnings;
 
 		// store response
-		if (file_put_contents($file_name, $response->compiledCode))
+		if (count($this->errors) == 0 && file_put_contents($file_name, $response->compiledCode))
 			$result = true;
 
 		return $result;
