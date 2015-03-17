@@ -16,7 +16,7 @@
  * Author: Mladen Mijatov <mladen@way2cu.com>
  */
 
-namespace Library/Closure;
+namespace Library\Closure;
 
 
 class Level {
