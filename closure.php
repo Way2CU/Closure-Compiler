@@ -148,6 +148,7 @@ class Compiler {
 		// prepare headers and content
 		$params = $this->prepare_params();
 		$content = http_build_query($params);
+		$content = preg_replace('/%5B[0-9]+%5D/simU', '', $content); // fix stupid PHP HTTP array interpretation
 		$headers = $this->prepare_headers($content);
 
 		// open connection
@@ -201,6 +202,7 @@ class Compiler {
 		// prepare headers and content
 		$params = $this->prepare_params();
 		$content = http_build_query($params);
+		$content = preg_replace('/%5B[0-9]+%5D/simU', '', $content); // fix stupid PHP HTTP array interpretation
 		$headers = $this->prepare_headers($content);
 
 		// open connection
@@ -288,9 +290,7 @@ class Compiler {
 		// required configuration
 		$result['compilation_level'] = $this->level;
 		$result['output_format'] = 'json';
-		$result['output_info_1'] = 'compiled_code';
-		$result['output_info_2'] = 'warnings';
-		$result['output_info_3'] = 'errors';
+		$result['output_info'] = array('compiled_code', 'warnings', 'errors');
 
 		// configure externals
 		if (!is_null($this->externals))
