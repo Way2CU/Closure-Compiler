@@ -288,7 +288,9 @@ class Compiler {
 		// required configuration
 		$result['compilation_level'] = $this->level;
 		$result['output_format'] = 'json';
-		$result['output_info'] = 'compiled_code,warnings,errors';
+		$result['output_info_1'] = 'compiled_code';
+		$result['output_info_2'] = 'warnings';
+		$result['output_info_3'] = 'errors';
 
 		// configure externals
 		if (!is_null($this->externals))
