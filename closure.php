@@ -38,6 +38,7 @@ class Compiler {
 	private $warnings = array();
 	private $files = array();
 	private $links = array();
+	private $input_list = array();
 
 	private $optimization_levels = array('WHITESPACE_ONLY', 'SIMPLE_OPTIMIZATIONS', 'ADVANCED_OPTIMIZATIONS');
 	private $warning_levels = array('QUIET', 'DEFAULT', 'VERBOSE');
@@ -54,8 +55,11 @@ class Compiler {
 	 * @param string $file_name
 	 */
 	public function add_file($file_name) {
-		if (!in_array($file_name, $this->files) && file_exists($file_name))
+		if (!in_array($file_name, $this->files) && file_exists($file_name)) {
+			$index = 'Input_'.count($this->files);
+			$this->input_list[$index] = $file_name;
 			$this->files[] = $file_name;
+		}
 	}
 
 	/**
@@ -134,6 +138,16 @@ class Compiler {
 	 */
 	public function get_warnings() {
 		return $this->warnings;
+	}
+
+	/**
+	 * Get list of files sent for compilation along with their index
+	 * names. These index names will appear in compilation warnings and errors.
+	 *
+	 * @return array
+	 */
+	public function get_input_list() {
+		return $this->input_list;
 	}
 
 	/**
