@@ -179,7 +179,7 @@ class Compiler {
 
 			// parse response
 			$json_data = substr($raw_data, $data_pos);
-			$response = json_decode($raw_data);
+			$response = json_decode($json_data);
 
 			// close connection
 			fclose($socket);
@@ -233,7 +233,7 @@ class Compiler {
 
 			// parse response
 			$json_data = substr($raw_data, $data_pos);
-			$response = json_decode($raw_data);
+			$response = json_decode($json_data);
 
 			// close connection
 			fclose($socket);
