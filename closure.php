@@ -12,11 +12,15 @@
  * For additional information refer to:
  *	https://developers.google.com/closure/compiler/
  *
- * Copyright © 2015 Way2CU. All Rights Reserved.
+ * Copyright © 2016 Way2CU. All Rights Reserved.
  * Author: Mladen Mijatov <mladen@way2cu.com>
  */
 
 namespace Library\Closure;
+
+
+class RemoteServerError extends \Exception {};
+class InvalidResponseError extends \Exception {};
 
 
 class Level {
@@ -177,8 +181,8 @@ class Compiler {
 			$data_pos = strpos($raw_data, '{"compiledCode":');
 
 			// parse response
-			$json_data = substr($raw_data, $data_pos);
-			$response = json_decode($json_data);
+			list($header, $body) = preg_split("/\R\R/", $raw_data, 2);
+			$response = json_decode($body, true);
 
 			// close connection
 			fclose($socket);
@@ -186,17 +190,33 @@ class Compiler {
 		}
 
 		// bail if we didn't get any response
-		if (is_null($response))
+		if (is_null($response)) {
+			throw new InvalidResponseError('Closure compilation server did not provide response!');
 			return $result;
+		}
 
-		if (!empty($response->errors))
-			$this->errors = $response->errors;
+		// handle server side errors
+		if (array_key_exists('serverErrors', $response)) {
+			$count = count($response['serverErrors']);
+			foreach ($response['serverErrors'] as $index => $error) {
+				$message = 'Compilation error '.$index.'/'.$count.': ';
+				$message .= (int) $error['code'].' - ';
+				$message .= (string) $error['message'];
 
-		if (!empty($response->warnings))
-			$this->warnings = $response->warnings;
+				error_log($message);
+			}
+			throw new RemoteServerError('Error compiling provided files!');
 
-		// store response
-		$result = $response->compiledCode;
+		} else {
+			if (!empty($response->errors))
+				$this->errors = $response->errors;
+
+			if (!empty($response->warnings))
+				$this->warnings = $response->warnings;
+
+			// store response
+			$result = $response->compiledCode;
+		}
 
 		return $result;
 	}
@@ -207,6 +227,8 @@ class Compiler {
 	 *
 	 * @param string $file_name
 	 * @return boolean
+	 * @throws InvalidResponseError
+	 * @throws RemoteServerError
 	 */
 	public function compile_and_save($file_name) {
 		$result = false;
@@ -227,11 +249,10 @@ class Compiler {
 			// send and receive data
 			fwrite($socket, $headers."\r\n\r\n".$content);
 			$raw_data = stream_get_contents($socket);
-			$data_pos = strpos($raw_data, '{"compiledCode":');
 
 			// parse response
-			$json_data = substr($raw_data, $data_pos);
-			$response = json_decode($json_data);
+			list($header, $body) = preg_split("/\R\R/", $raw_data, 2);
+			$response = json_decode($body, true);
 
 			// close connection
 			fclose($socket);
@@ -239,18 +260,34 @@ class Compiler {
 		}
 
 		// bail if we didn't get any response
-		if (is_null($response))
+		if (is_null($response)) {
+			throw new InvalidResponseError('Closure compilation server did not provide response!');
 			return $result;
+		}
 
-		if (!empty($response->errors))
-			$this->errors = $response->errors;
+		// handle server side errors
+		if (array_key_exists('serverErrors', $response)) {
+			$count = count($response['serverErrors']);
+			foreach ($response['serverErrors'] as $index => $error) {
+				$message = 'Compilation error '.$index.'/'.$count.': ';
+				$message .= (int) $error['code'].' - ';
+				$message .= (string) $error['message'];
 
-		if (!empty($response->warnings))
-			$this->warnings = $response->warnings;
+				error_log($message);
+			}
+			throw new RemoteServerError('Error compiling provided files!');
 
-		// store response
-		if (count($this->errors) == 0 && file_put_contents($file_name, $response->compiledCode))
-			$result = true;
+		} else {
+			if (!empty($response->errors))
+				$this->errors = $response->errors;
+
+			if (!empty($response->warnings))
+				$this->warnings = $response->warnings;
+
+			// store response
+			if (count($this->errors) == 0 && file_put_contents($file_name, $response->compiledCode))
+				$result = true;
+		}
 
 		return $result;
 	}
