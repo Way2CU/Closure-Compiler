@@ -43,6 +43,7 @@ class Compiler {
 	private $files = array();
 	private $links = array();
 	private $input_list = array();
+	private $code = null;
 
 	private $optimization_levels = array('WHITESPACE_ONLY', 'SIMPLE_OPTIMIZATIONS', 'ADVANCED_OPTIMIZATIONS');
 	private $warning_levels = array('QUIET', 'DEFAULT', 'VERBOSE');
@@ -73,6 +74,15 @@ class Compiler {
 	 */
 	public function add_url($url) {
 		$this->links[] = $url;
+	}
+
+	/**
+	 * Manually set code to be compiler.
+	 *
+	 * @param string $code
+	 */
+	public function set_code($code) {
+		$this->code = $code;
 	}
 
 	/**
@@ -178,7 +188,6 @@ class Compiler {
 			// send and receive data
 			fwrite($socket, $headers."\r\n\r\n".$content);
 			$raw_data = stream_get_contents($socket);
-			$data_pos = strpos($raw_data, '{"compiledCode":');
 
 			// parse response
 			list($header, $body) = preg_split("/\R\R/", $raw_data, 2);
@@ -208,14 +217,14 @@ class Compiler {
 			throw new RemoteServerError('Error compiling provided files!');
 
 		} else {
-			if (!empty($response->errors))
-				$this->errors = $response->errors;
+			if (isset($response['errors']))
+				$this->errors = $response['errors'];
 
-			if (!empty($response->warnings))
-				$this->warnings = $response->warnings;
+			if (isset($response['warnings']))
+				$this->warnings = $response['warnings'];
 
 			// store response
-			$result = $response->compiledCode;
+			$result = $response['compiledCode'];
 		}
 
 		return $result;
@@ -266,7 +275,7 @@ class Compiler {
 		}
 
 		// handle server side errors
-		if (array_key_exists('serverErrors', $response)) {
+		if (isset($response['serverErrors'])) {
 			$count = count($response['serverErrors']);
 			foreach ($response['serverErrors'] as $index => $error) {
 				$message = 'Compilation error '.$index.'/'.$count.': ';
@@ -278,14 +287,14 @@ class Compiler {
 			throw new RemoteServerError('Error compiling provided files!');
 
 		} else {
-			if (!empty($response->errors))
-				$this->errors = $response->errors;
+			if (isset($response['errors']))
+				$this->errors = $response['errors'];
 
-			if (!empty($response->warnings))
-				$this->warnings = $response->warnings;
+			if (isset($response['warnings']))
+				$this->warnings = $response['warnings'];
 
 			// store response
-			if (count($this->errors) == 0 && file_put_contents($file_name, $response->compiledCode))
+			if (count($this->errors) == 0 && file_put_contents($file_name, $response['compiledCode']))
 				$result = true;
 		}
 
@@ -330,6 +339,10 @@ class Compiler {
 
 			// add combined files as parameter
 			$result['js_code'] = $code;
+
+		} else if (!is_null($this->code)) {
+			// add manually set code as parameter
+			$result['js_code'] = $this->code;
 
 		} else {
 			// add links
