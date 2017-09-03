@@ -380,12 +380,12 @@ class Compiler {
 		foreach ($params as $key => $value)
 			if (!is_array($value)) {
 				// add normal value
-				$result[] = $key.'='.urlencode($value);
+				$result[] = $key.'='.rawurlencode($value);
 
 			} else {
 				// add param list
 				foreach ($value as $list_item)
-					$result[] = $key.'='.urlencode($list_item);
+					$result[] = $key.'='.rawurlencode($list_item);
 			}
 
 		return implode('&', $result);
