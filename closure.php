@@ -280,7 +280,7 @@ class Compiler {
 			foreach ($response['serverErrors'] as $index => $error) {
 				$message = 'Compilation error '.$index.'/'.$count.': ';
 				$message .= (int) $error['code'].' - ';
-				$message .= (string) $error['message'];
+				$message .= (string) $error['error'];
 
 				error_log($message);
 			}
