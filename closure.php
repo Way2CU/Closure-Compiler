@@ -183,39 +183,31 @@ class Compiler {
 	 * @return string
 	 */
 	public function compile() {
-		$result = '';
-		$response = null;
+		$result = null;
 
 		// prepare headers and content
 		$params = $this->prepare_params();
 		$content = $this->build_query($params);
-		$headers = $this->prepare_headers($content);
-
-		// open connection
-		$port = $this->secure ? 443 : 80;
-		$prefix = $this->secure ? 'ssl://' : '';
-		$socket = fsockopen($prefix.$this->hostname, $port, $error_number, $error_string, 2);
 
 		// send data for compilation
-		if ($socket && $error_number == 0) {
-			// send and receive data
-			fwrite($socket, $headers."\r\n\r\n".$content);
-			$raw_data = stream_get_contents($socket);
+		$url = ($this->secure ? 'https' : 'http').'://'.$this->hostname.'/'.$this->endpoint;
+		$options = array('http' => array(
+				'method'        => 'POST',
+				'ignore_errors' => true,
+				'header'        => $this->prepare_headers($content),
+				'content'       => $content
+			));
+		$context = stream_context_create($options);
+		$raw_data = file_get_contents($url, false, $context);
 
-			// parse response
-			list($header, $body) = preg_split("/\R\R/", $raw_data, 2);
-			$response = json_decode($body, true);
-
-			// close connection
-			fclose($socket);
-			$result = false;
-		}
-
-		// bail if we didn't get any response
-		if (is_null($response)) {
+		if ($raw_data === false)
 			throw new InvalidResponseError('Closure compilation server did not provide response!');
-			return $result;
-		}
+
+		// decode response
+		$response = json_decode($raw_data, true);
+
+		if (is_null($response))
+			throw new InvalidResponseError('Closure compilation server did not provide response!');
 
 		// handle server side errors
 		if (array_key_exists('serverErrors', $response)) {
@@ -253,63 +245,8 @@ class Compiler {
 	 * @throws RemoteServerError
 	 */
 	public function compile_and_save($file_name) {
-		$result = false;
-		$response = null;
-
-		// prepare headers and content
-		$params = $this->prepare_params();
-		$content = $this->build_query($params);
-		$headers = $this->prepare_headers($content);
-
-		// open connection
-		$port = $this->secure ? 443 : 80;
-		$prefix = $this->secure ? 'ssl://' : '';
-		$socket = fsockopen($prefix.$this->hostname, $port, $error_number, $error_string, 2);
-
-		// send data for compilation
-		if ($socket && $error_number == 0) {
-			// send and receive data
-			fwrite($socket, $headers."\r\n\r\n".$content);
-			$raw_data = stream_get_contents($socket);
-
-			// parse response
-			list($header, $body) = preg_split("/\R\R/", $raw_data, 2);
-			$response = json_decode($body, true);
-
-			// close connection
-			fclose($socket);
-			$result = false;
-		}
-
-		// bail if we didn't get any response
-		if (is_null($response)) {
-			throw new InvalidResponseError('Closure compilation server did not provide response!');
-			return $result;
-		}
-
-		// handle server side errors
-		if (isset($response['serverErrors'])) {
-			$count = count($response['serverErrors']);
-			foreach ($response['serverErrors'] as $index => $error) {
-				$message = 'Compilation error '.$index.'/'.$count.': ';
-				$message .= (int) $error['code'].' - ';
-				$message .= (string) $error['error'];
-
-				error_log($message);
-			}
-			throw new RemoteServerError('Error compiling provided files!');
-
-		} else {
-			if (isset($response['errors']))
-				$this->errors = $response['errors'];
-
-			if (isset($response['warnings']))
-				$this->warnings = $response['warnings'];
-
-			// store response
-			if (count($this->errors) == 0 && file_put_contents($file_name, $response['compiledCode']))
-				$result = true;
-		}
+		$code = $this->compile();
+		$result = !is_null($code) && file_put_contents($file_name, $code);
 
 		return $result;
 	}
@@ -325,8 +262,6 @@ class Compiler {
 		$content_length = strlen($content);
 
 		// compile default headers
-		$header[] = "POST {$this->endpoint} HTTP/1.1";
-		$header[] = 'Host: '.$this->hostname;
 		$header[] = 'Content-Type: application/x-www-form-urlencoded';
 		$header[] = 'Content-Length: '.$content_length;
 		$header[] = 'Connect-time: 0';
