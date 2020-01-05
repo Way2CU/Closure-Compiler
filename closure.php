@@ -96,6 +96,19 @@ class Compiler {
 	}
 
 	/**
+	 * Configure API endpoint to allow custom compiler implementations.
+	 *
+	 * @param string $hostname
+	 * @param string $endpoint
+	 */
+	public function set_endpoint($hostname=null, $endpoint=null) {
+		if (!is_null($hostname))
+			$this->hostname = $hostname;
+		if (!is_null($endpoint))
+			$this->endpoint = $endpoint;
+	}
+
+	/**
 	 * Set optimization level.
 	 *
 	 * @param string $level
