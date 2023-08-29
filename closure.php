@@ -37,7 +37,7 @@ class Compiler {
 	private $warning_level = 'QUIET';
 	private $externals = null;
 	private $externals_url = null;
-	private $language = 'ECMASCRIPT5';
+	private $language = 'STABLE';
 	private $errors = array();
 	private $warnings = array();
 	private $files = array();
@@ -47,7 +47,11 @@ class Compiler {
 
 	private $optimization_levels = array('WHITESPACE_ONLY', 'SIMPLE_OPTIMIZATIONS', 'ADVANCED_OPTIMIZATIONS');
 	private $warning_levels = array('QUIET', 'DEFAULT', 'VERBOSE');
-	private $supported_languages = array('ECMASCRIPT3', 'ECMASCRIPT5', 'ECMASCRIPT5_STRICT');
+	private $supported_languages = array(
+		'ECMASCRIPT3', 'ECMASCRIPT5', 'ECMASCRIPT5_STRICT', 'ECMASCRIPT_2016', 'ECMASCRIPT_2017',
+		'ECMASCRIPT_2018', 'ECMASCRIPT_2019', 'ECMASCRIPT_2020', 'CMASCRIPT_2021', 'STABLE',
+		'ECMASCRIPT_NEXT', 'UNSTABLE'
+	);
 
 	// communication endpoint
 	private $endpoint = '/compile';
